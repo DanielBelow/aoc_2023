@@ -1,0 +1,20 @@
+name: Check
+
+on: push
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Test
+        run: cargo test --release --verbose
+      - name: rustfmt
+        run: cargo fmt -- --check
+      - name: clippy
+        run: cargo clippy --all-targets -- -Dwarnings -Wclippy::pedantic -Wclippy::nursery -Wclippy::unwrap_used
