@@ -1,13 +1,6 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use parse_display_derive::{Display, FromStr};
 
-#[derive(Default, Debug)]
-pub struct Round {
-    reds: usize,
-    greens: usize,
-    blues: usize,
-}
-
 #[derive(Copy, Clone, Display, FromStr)]
 pub enum Cube {
     #[display("{0} red")]
@@ -20,63 +13,59 @@ pub enum Cube {
     Blue(usize),
 }
 
+#[derive(Copy, Clone, Default, Debug)]
+pub struct CubeInfo {
+    red: usize,
+    green: usize,
+    blue: usize,
+}
+
 #[derive(Debug)]
 pub struct Game {
     id: usize,
-    rounds: Vec<Round>,
+    cube_info: CubeInfo,
 }
 
 impl Game {
-    pub fn is_possible(&self, r: usize, g: usize, b: usize) -> bool {
-        self.rounds
-            .iter()
-            .all(|round| round.reds <= r && round.greens <= g && round.blues <= b)
+    const fn is_possible(&self, r: usize, g: usize, b: usize) -> bool {
+        self.cube_info.red <= r && self.cube_info.green <= g && self.cube_info.blue <= b
     }
 
-    pub fn power(&self) -> usize {
-        let mut req_r = 0;
-        let mut req_g = 0;
-        let mut req_b = 0;
-
-        for r in &self.rounds {
-            req_r = req_r.max(r.reds);
-            req_g = req_g.max(r.greens);
-            req_b = req_b.max(r.blues);
-        }
-
-        req_r * req_g * req_b
+    const fn power(&self) -> usize {
+        self.cube_info.red * self.cube_info.green * self.cube_info.blue
     }
 }
 
-fn parse_round(round_data: &str) -> Round {
-    let mut round = Round::default();
+fn parse_game(id: usize, line: &str) -> Game {
+    let played_game = line
+        .split_once(':')
+        .expect(r"Expected 'Game <id>: ' prefix")
+        .1;
 
-    for r in round_data.split(", ") {
-        match r.trim().parse::<Cube>().expect("Could not parse round") {
-            Cube::Red(n) => round.reds = n,
-            Cube::Green(n) => round.greens = n,
-            Cube::Blue(n) => round.blues = n,
-        };
+    let mut red = 0;
+    let mut green = 0;
+    let mut blue = 0;
+
+    for played_round in played_game.split(';') {
+        for data in played_round.split(", ") {
+            match data.trim().parse::<Cube>().expect("Could not parse round") {
+                Cube::Red(n) => red = red.max(n),
+                Cube::Green(n) => green = green.max(n),
+                Cube::Blue(n) => blue = blue.max(n),
+            };
+        }
     }
 
-    round
+    Game {
+        id: id + 1,
+        cube_info: CubeInfo { red, green, blue },
+    }
 }
 
 #[aoc_generator(day02)]
 pub fn generate(inp: &str) -> Vec<Game> {
     inp.lines().enumerate().fold(vec![], |mut acc, (id, line)| {
-        let played_game = line
-            .split_once(':')
-            .expect(r"Expected 'Game <id>: ' prefix")
-            .1;
-        let rounds = played_game.split(';').fold(vec![], |mut acc, round_data| {
-            let round = parse_round(round_data);
-            acc.push(round);
-            acc
-        });
-
-        acc.push(Game { id: id + 1, rounds });
-
+        acc.push(parse_game(id, line));
         acc
     })
 }
