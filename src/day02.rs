@@ -1,11 +1,23 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use itertools::Itertools;
+use parse_display_derive::{Display, FromStr};
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Round {
     reds: usize,
     greens: usize,
     blues: usize,
+}
+
+#[derive(Copy, Clone, Display, FromStr)]
+pub enum Cube {
+    #[display("{0} red")]
+    Red(usize),
+
+    #[display("{0} green")]
+    Green(usize),
+
+    #[display("{0} blue")]
+    Blue(usize),
 }
 
 #[derive(Debug)]
@@ -37,36 +49,17 @@ impl Game {
 }
 
 fn parse_round(round_data: &str) -> Round {
-    let round = round_data
-        .split(", ")
-        .flat_map(|it| it.split(' ').collect_vec())
-        .filter(|it| !it.is_empty())
-        .collect_vec();
+    let mut round = Round::default();
 
-    let mut reds = 0;
-    let mut blues = 0;
-    let mut greens = 0;
-
-    for chunk in round.chunks_exact(2) {
-        match chunk {
-            [amount, color] => {
-                let amount = amount.parse::<usize>().expect("Could not parse amount");
-                match *color {
-                    "red" => reds = amount,
-                    "green" => greens = amount,
-                    "blue" => blues = amount,
-                    _ => unreachable!("Got unknown color: {color}"),
-                };
-            }
-            _ => unreachable!("Expected to have chunks of size 2"),
+    for r in round_data.split(", ") {
+        match r.trim().parse::<Cube>().expect("Could not parse round") {
+            Cube::Red(n) => round.reds = n,
+            Cube::Green(n) => round.greens = n,
+            Cube::Blue(n) => round.blues = n,
         };
     }
 
-    Round {
-        reds,
-        greens,
-        blues,
-    }
+    round
 }
 
 #[aoc_generator(day02)]
