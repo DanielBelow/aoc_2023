@@ -107,15 +107,15 @@ pub fn part1(inp: &ParsedInput) -> usize {
 #[aoc(day03, part2)]
 pub fn part2(inp: &ParsedInput) -> usize {
     inp.gears()
-        .map(|it| {
-            inp.numbers
+        .filter_map(|it| {
+            let nums = inp
+                .numbers
                 .iter()
                 .filter(|num| num.touches_symbol(it))
-                .map(|num| num.value)
-                .collect_vec()
+                .collect_vec();
+            (nums.len() == 2).then(|| (nums[0], nums[1]))
         })
-        .filter(|it| it.len() == 2)
-        .fold(0, |acc, ratios| acc + ratios[0] * ratios[1])
+        .fold(0, |acc, (l, r)| acc + l.value * r.value)
 }
 
 #[cfg(test)]
