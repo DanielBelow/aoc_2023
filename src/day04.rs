@@ -54,10 +54,9 @@ pub fn part1(inp: &[ScratchCard]) -> usize {
 pub fn part2(inp: &[ScratchCard]) -> usize {
     let mut result = vec![1usize; inp.len()];
 
-    for card in inp {
-        let card_id = card.id;
-        for card_offset in 0..card.matches {
-            result[card_id + card_offset] += result[card_id - 1];
+    for &ScratchCard { id, matches } in inp {
+        for card_offset in 0..matches {
+            result[id + card_offset] += result[id - 1];
         }
     }
 
