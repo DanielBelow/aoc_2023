@@ -8,12 +8,6 @@ pub struct ScratchCard {
 }
 
 impl ScratchCard {
-    fn count_duplicates(&self, orig: &[Self]) -> usize {
-        orig[self.id..self.id + self.matches]
-            .iter()
-            .fold(1, |acc, dupe| acc + dupe.count_duplicates(orig))
-    }
-
     const fn points(&self) -> usize {
         match self.matches {
             0 => 0,
@@ -58,8 +52,16 @@ pub fn part1(inp: &[ScratchCard]) -> usize {
 
 #[aoc(day04, part2)]
 pub fn part2(inp: &[ScratchCard]) -> usize {
-    inp.iter()
-        .fold(0, |acc, card| acc + card.count_duplicates(inp))
+    let mut result = vec![1usize; inp.len()];
+
+    for card in inp {
+        let card_id = card.id;
+        for card_offset in 0..card.matches {
+            result[card_id + card_offset] += result[card_id - 1];
+        }
+    }
+
+    result.iter().sum::<usize>()
 }
 
 #[cfg(test)]
