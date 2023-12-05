@@ -1,15 +1,6 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
 
-#[derive(PartialEq, Eq, Copy, Clone)]
-enum Relation {
-    None,
-    FullyContains,
-    IsFullyContained,
-    BeginOverlaps,
-    EndOverlaps,
-}
-
 #[derive(Copy, Clone, Default, Debug)]
 pub struct NumberRange {
     dest_start: usize,
@@ -19,25 +10,11 @@ pub struct NumberRange {
 
 impl NumberRange {
     const fn end(&self) -> usize {
-        self.source_start + self.length
+        self.source_start + self.length - 1
     }
 
     const fn contains(&self, value: usize) -> bool {
         value >= self.source_start && value <= self.end()
-    }
-
-    const fn check_relation(&self, (start, end): (usize, usize)) -> Relation {
-        if self.source_start <= start && end <= self.end() {
-            Relation::FullyContains
-        } else if start <= self.source_start && self.end() <= end {
-            Relation::IsFullyContained
-        } else if self.end() >= end && start < self.source_start && self.source_start < end {
-            Relation::BeginOverlaps
-        } else if self.source_start <= start && start < self.end() && self.end() < end {
-            Relation::EndOverlaps
-        } else {
-            Relation::None
-        }
     }
 
     const fn map_number(&self, value: usize) -> usize {
@@ -47,11 +24,11 @@ impl NumberRange {
 }
 
 #[derive(Clone, Debug)]
-pub struct Mapping {
+pub struct Layer {
     maps: Vec<NumberRange>,
 }
 
-impl Mapping {
+impl Layer {
     fn transform(&self, value: usize) -> usize {
         self.maps
             .iter()
@@ -69,7 +46,7 @@ impl Mapping {
 #[derive(Clone, Debug)]
 pub struct ParsedInput {
     seeds: Vec<usize>,
-    mapping: Vec<Mapping>,
+    mapping: Vec<Layer>,
 }
 
 fn parse_seeds(inp: &str) -> Vec<usize> {
@@ -101,13 +78,13 @@ pub fn generate(inp: &str) -> ParsedInput {
             acc
         });
 
-        mapping.push(Mapping { maps });
+        mapping.push(Layer { maps });
     }
 
     ParsedInput { seeds, mapping }
 }
 
-fn map_seed(seed: usize, mappings: &[Mapping]) -> usize {
+fn map_seed(seed: usize, mappings: &[Layer]) -> usize {
     mappings.iter().fold(seed, |acc, it| it.transform(acc))
 }
 
@@ -120,77 +97,104 @@ pub fn part1(inp: &ParsedInput) -> usize {
         .expect("minimum")
 }
 
-fn create_new_ranges(
-    relation: Relation,
-    number_range: &NumberRange,
-    seed_range: (usize, usize),
-) -> Vec<(usize, usize)> {
-    match relation {
-        Relation::FullyContains => {
-            //   [..., seed_range, ... ]
-            // [...., number_range, .... ]
-            // number_range fully contains seed_range -> convert seed_range
-            vec![(
-                number_range.map_number(seed_range.0),
-                number_range.map_number(seed_range.1),
-            )]
+#[derive(Clone, Debug)]
+struct SplitRanges {
+    leftover: Vec<(usize, usize)>,
+    processed: Vec<(usize, usize)>,
+}
+
+fn create_new_ranges(number_range: &NumberRange, (start, end): (usize, usize)) -> SplitRanges {
+    if number_range.source_start <= start && end <= number_range.end() {
+        //   [..., seed_range, ... ]
+        // [...., number_range, .... ]
+        // number_range fully contains seed_range -> convert seed_range
+        SplitRanges {
+            leftover: vec![],
+            processed: vec![(number_range.map_number(start), number_range.map_number(end))],
         }
-        Relation::IsFullyContained => {
-            // [......, seed_range, ...... ]
-            //    [.., number_range, .. ]
-            // seed_range fully contains number_range
-            // -> keep the beginning
-            // -> convert number_range source to dest
-            // -> keep the end
+    } else if start <= number_range.source_start && number_range.end() <= end {
+        // [......, seed_range, ......]
+        //    [.., number_range, .. ]
+        // seed_range fully contains number_range
+        // -> keep the beginning
+        // -> convert number_range source to dest
+        // -> keep the end
+        let processed = vec![(
+            number_range.dest_start,
+            number_range.dest_start + number_range.length - 1,
+        )];
+
+        let leftover = if start == number_range.source_start {
+            vec![(number_range.end() + 1, end)]
+        } else if end == number_range.end() {
+            vec![(start, number_range.source_start - 1)]
+        } else {
             vec![
-                (seed_range.0, number_range.source_start),
-                (
-                    number_range.dest_start,
-                    number_range.map_number(number_range.end()),
-                ),
-                (number_range.end(), seed_range.1),
+                (start, number_range.source_start - 1),
+                (number_range.end() + 1, end),
             ]
+        };
+
+        SplitRanges {
+            leftover,
+            processed,
         }
-        Relation::BeginOverlaps => {
-            // [..., seed_range, ... ]
-            //        [..., number_range, ... ]
-            // -> keep the beginning
-            // -> convert number_range
-            vec![
-                (seed_range.0, number_range.source_start),
-                (
-                    number_range.dest_start,
-                    number_range.map_number(seed_range.1),
-                ),
-            ]
+    } else if number_range.end() >= end
+        && start < number_range.source_start
+        && number_range.source_start <= end
+    {
+        // [..., seed_range, ... ]
+        //        [..., number_range, ... ]
+        // -> keep the beginning
+        // -> convert number_range
+        SplitRanges {
+            leftover: vec![(start, number_range.source_start - 1)],
+            processed: vec![(number_range.dest_start, number_range.map_number(end))],
         }
-        Relation::EndOverlaps => {
-            //        [..., seed_range, ... ]
-            // [..., number_range, ... ]
-            // -> convert the overlap
-            // -> keep the end
-            vec![
-                (
-                    number_range.map_number(seed_range.0),
-                    number_range.map_number(number_range.end()),
-                ),
-                (number_range.end(), seed_range.1),
-            ]
+    } else if number_range.source_start <= start
+        && start <= number_range.end()
+        && number_range.end() < end
+    {
+        //        [..., seed_range, ... ]
+        // [..., number_range, ... ]
+        // -> convert the overlap
+        // -> keep the end
+        SplitRanges {
+            leftover: vec![(number_range.end() + 1, end)],
+            processed: vec![(
+                number_range.map_number(start),
+                number_range.map_number(number_range.end()),
+            )],
         }
-        Relation::None => unreachable!("Not called with Relation::None"),
+    } else {
+        SplitRanges {
+            leftover: vec![],
+            processed: vec![],
+        }
     }
 }
 
 fn calculate_seed_mapping(
     seed_range: (usize, usize),
     mapping: &[NumberRange],
-) -> Option<Vec<(usize, usize)>> {
-    mapping.iter().find_map(
-        |number_range| match number_range.check_relation(seed_range) {
-            Relation::None => None,
-            rel => Some(create_new_ranges(rel, number_range, seed_range)),
-        },
-    )
+) -> Vec<(usize, usize)> {
+    let result = mapping.iter().fold(vec![], |mut acc, number_range| {
+        let split_ranges = create_new_ranges(number_range, seed_range);
+        let mut res = split_ranges.processed.clone();
+        for &lo in &split_ranges.leftover {
+            let remaining = calculate_seed_mapping(lo, mapping);
+            res.extend_from_slice(&remaining);
+        }
+
+        acc.extend_from_slice(&res);
+        acc
+    });
+
+    if result.is_empty() {
+        vec![seed_range]
+    } else {
+        result
+    }
 }
 
 #[aoc(day05, part2)]
@@ -198,14 +202,13 @@ pub fn part2(inp: &ParsedInput) -> usize {
     let mut seed_ranges = inp
         .seeds
         .chunks_exact(2)
-        .map(|chunk| (chunk[0], chunk[0] + chunk[1]))
+        .map(|chunk| (chunk[0], chunk[0] + chunk[1] - 1))
         .collect_vec();
 
-    for map in &inp.mapping {
-        let mapping = &map.maps;
+    for layer in &inp.mapping {
+        let mapping = &layer.maps;
         seed_ranges = seed_ranges.iter().fold(vec![], |mut acc, &seed_range| {
-            let new_ranges =
-                calculate_seed_mapping(seed_range, mapping).unwrap_or_else(|| vec![seed_range]);
+            let new_ranges = calculate_seed_mapping(seed_range, mapping);
             acc.extend_from_slice(&new_ranges);
             acc
         });
@@ -268,5 +271,14 @@ mod tests {
         let gen = generate(TEST_INPUT);
         let res = part2(&gen);
         assert_eq!(res, 46);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_p2_2() {
+        let inp = include_str!("../input/2023/day5_2.txt");
+        let gen = generate(inp);
+        let res = part2(&gen);
+        assert_eq!(res, 108_956_227);
     }
 }
