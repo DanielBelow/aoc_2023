@@ -273,12 +273,13 @@ mod tests {
         assert_eq!(res, 46);
     }
 
+    /*
     #[test]
-    #[ignore]
     fn test_p2_2() {
         let inp = include_str!("../input/2023/day5_2.txt");
         let gen = generate(inp);
         let res = part2(&gen);
         assert_eq!(res, 108_956_227);
     }
+    */
 }
