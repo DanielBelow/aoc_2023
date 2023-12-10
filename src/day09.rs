@@ -19,12 +19,13 @@ fn pairwise_diff(current: &[isize]) -> Vec<isize> {
 fn predict(row: &[isize]) -> isize {
     let mut hist = vec![row.to_vec()];
 
-    while hist.last().expect("non-empty").iter().any(|it| *it != 0) {
+    while !hist.last().expect("non-empty").iter().all_equal() {
         let diff = pairwise_diff(hist.last().expect("non-empty"));
         hist.push(diff);
     }
 
-    hist.last_mut().expect("non-empty").push(0);
+    let last = hist.last_mut().expect("non-empty");
+    last.push(last[0]);
 
     for idx in (0..hist.len() - 1).rev() {
         let cur_last = *hist[idx].last().expect("non-empty");
@@ -37,15 +38,13 @@ fn predict(row: &[isize]) -> isize {
 
 #[aoc(day09, part1)]
 pub fn part1(inp: &[Vec<isize>]) -> isize {
-    let inp = inp.to_owned();
     inp.iter().map(|it| predict(it)).sum()
 }
 
 #[aoc(day09, part2)]
 pub fn part2(inp: &[Vec<isize>]) -> isize {
     let inp = inp
-        .to_owned()
-        .iter_mut()
+        .iter()
         .map(|r| r.iter().rev().copied().collect_vec())
         .collect_vec();
 
