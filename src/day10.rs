@@ -9,67 +9,106 @@ pub fn generate(inp: &str) -> Vec<Vec<char>> {
         .collect_vec()
 }
 
-fn find_loop(start_char: char, inp: &[Vec<char>]) -> Vec<(usize, usize)> {
-    let mut inp = inp.to_owned();
+const fn connects_right(left: char) -> bool {
+    left == '-' || left == 'F' || left == 'L'
+}
 
-    let mut animal_pos = (0, 0);
+const fn connects_top(bot: char) -> bool {
+    bot == '|' || bot == 'J' || bot == 'L'
+}
+
+const fn connects_left(right: char) -> bool {
+    right == '-' || right == 'J' || right == '7'
+}
+
+const fn connects_bottom(top: char) -> bool {
+    top == '|' || top == 'F' || top == '7'
+}
+
+fn find_start_pos(inp: &[Vec<char>]) -> (usize, usize) {
     for (y, x) in iproduct!(0..inp.len(), 0..inp[0].len()) {
         if inp[y][x] == 'S' {
-            animal_pos = (y, x);
-            break;
+            return (y, x);
         }
     }
 
-    inp[animal_pos.0][animal_pos.1] = start_char;
+    unreachable!("no start position found")
+}
 
-    let the_loop = pathfinding::prelude::dfs_reach(animal_pos, |&(y, x)| {
+fn find_loop(start_pos: (usize, usize), inp: &[Vec<char>]) -> Vec<(usize, usize)> {
+    let height = inp.len();
+    let width = inp[0].len();
+
+    pathfinding::prelude::dfs_reach(start_pos, |&(y, x)| {
         let cur = inp[y][x];
 
         let mut succs = vec![];
 
         // top
-        if y > 0 && (cur == '|' || cur == 'J' || cur == 'L') {
-            let top = inp[y - 1][x];
-            if top == '|' || top == '7' || top == 'F' {
-                succs.push((y - 1, x));
-            }
+        if y > 0 && connects_top(cur) && connects_bottom(inp[y - 1][x]) {
+            succs.push((y - 1, x));
         }
 
         // right
-        if x < inp[y].len() - 1 && (cur == 'L' || cur == 'F' || cur == '-') {
-            let right = inp[y][x + 1];
-            if right == '-' || right == 'J' || right == '7' {
-                succs.push((y, x + 1));
-            }
+        if x < width - 1 && connects_right(cur) && connects_left(inp[y][x + 1]) {
+            succs.push((y, x + 1));
         }
 
         // bottom
-        if y < inp.len() - 1 && (cur == '|' || cur == 'F' || cur == '7') {
-            let bot = inp[y + 1][x];
-            if bot == '|' || bot == 'L' || bot == 'J' {
-                succs.push((y + 1, x));
-            }
+        if y < height - 1 && connects_bottom(cur) && connects_top(inp[y + 1][x]) {
+            succs.push((y + 1, x));
         }
 
         // left
-        if x > 0 && (cur == '-' || cur == 'J' || cur == '7') {
-            let left = inp[y][x - 1];
-            if left == '-' || left == 'F' || left == 'L' {
-                succs.push((y, x - 1));
-            }
+        if x > 0 && connects_left(cur) && connects_right(inp[y][x - 1]) {
+            succs.push((y, x - 1));
         }
 
         assert!(succs.len() < 3);
 
         succs
-    });
-
-    the_loop.collect_vec()
+    })
+    .collect_vec()
 }
 
 fn run_p1_with_start_as(start_char: char, inp: &[Vec<char>]) -> usize {
-    let lp = find_loop(start_char, inp);
+    let mut inp = inp.to_owned();
+
+    let start_pos = find_start_pos(&inp);
+    inp[start_pos.0][start_pos.1] = start_char;
+
+    let lp = find_loop(start_pos, &inp);
     lp.len().div_ceil(2)
+}
+
+fn count_hits(y: usize, x: usize, map: &[Vec<char>]) -> usize {
+    map[y][x..]
+        .iter()
+        .filter(|&it| connects_bottom(*it))
+        .count()
+}
+
+fn run_p2_with_start_as(start_char: char, inp: &[Vec<char>]) -> usize {
+    let mut inp = inp.to_owned();
+    let height = inp.len();
+    let width = inp[0].len();
+
+    let start_pos = find_start_pos(&inp);
+    inp[start_pos.0][start_pos.1] = start_char;
+
+    let lp = find_loop(start_pos, &inp);
+
+    let mut cleaned_map = vec![vec!['.'; width]; height];
+
+    for &(y, x) in &lp {
+        cleaned_map[y][x] = inp[y][x];
+    }
+
+    iproduct!(0..height, 0..width)
+        .filter(|&(y, x)| cleaned_map[y][x] == '.')
+        .fold(0, |acc, (y, x)| {
+            acc + usize::from(count_hits(y, x, &cleaned_map).is_odd())
+        })
 }
 
 #[aoc(day10, part1)]
@@ -77,38 +116,9 @@ pub fn part1(inp: &[Vec<char>]) -> usize {
     run_p1_with_start_as('J', inp)
 }
 
-fn run_p2_with_start_as(start_char: char, inp: &[Vec<char>]) -> usize {
-    let lp = find_loop(start_char, inp);
-
-    let mut inp = inp.to_owned();
-
-    for (y, x) in iproduct!(0..inp.len(), 0..inp[0].len()) {
-        if !lp.contains(&(y, x)) {
-            inp[y][x] = '.';
-        }
-
-        if inp[y][x] == 'S' {
-            inp[y][x] = start_char;
-        }
-    }
-
-    iproduct!(0..inp.len(), 0..inp[0].len())
-        .filter(|&(y, x)| inp[y][x] == '.')
-        .fold(0, |acc, (y, x)| {
-            acc + usize::from(count_hits(y, x, &inp).is_odd())
-        })
-}
-
 #[aoc(day10, part2)]
 pub fn part2(inp: &[Vec<char>]) -> usize {
     run_p2_with_start_as('J', inp)
-}
-
-fn count_hits(y: usize, x: usize, map: &[Vec<char>]) -> usize {
-    map[y][x..]
-        .iter()
-        .filter(|&it| *it == '|' || *it == '7' || *it == 'F')
-        .count()
 }
 
 #[cfg(test)]
