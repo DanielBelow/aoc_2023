@@ -21,8 +21,10 @@ fn count_empty_rows_between(row_start: usize, row_end: usize, inp: &[Vec<char>])
 
     inp.iter()
         .enumerate()
-        .filter(|(_, it)| it.iter().all(|c| *c == '.'))
-        .filter(|(idx, _)| end > *idx && *idx > start)
+        .filter(|&(idx, row)| {
+            let is_within_bounds = end > idx && idx > start;
+            is_within_bounds && row.iter().all(|ch| *ch == '.')
+        })
         .count()
 }
 
@@ -38,14 +40,16 @@ fn count_empty_cols_between(col_start: usize, col_end: usize, inp: &[Vec<char>])
 fn shortest_paths_after_expansion(num_expansions: usize, inp: &[Vec<char>]) -> usize {
     let galaxies = find_galaxies(inp);
 
+    let expansion_factor = num_expansions - 1;
+
     galaxies.iter().combinations(2).fold(0, |acc, galaxy| {
-        let (from_y, from_x) = galaxy[0];
-        let (to_y, to_x) = galaxy[1];
+        let &(from_y, from_x) = galaxy[0];
+        let &(to_y, to_x) = galaxy[1];
 
-        let empty_rows = (num_expansions - 1) * count_empty_rows_between(*from_y, *to_y, inp);
-        let empty_cols = (num_expansions - 1) * count_empty_cols_between(*from_x, *to_x, inp);
+        let empty_rows = expansion_factor * count_empty_rows_between(from_y, to_y, inp);
+        let empty_cols = expansion_factor * count_empty_cols_between(from_x, to_x, inp);
 
-        acc + to_x.abs_diff(*from_x) + to_y.abs_diff(*from_y) + empty_rows + empty_cols
+        acc + to_x.abs_diff(from_x) + to_y.abs_diff(from_y) + empty_rows + empty_cols
     })
 }
 
