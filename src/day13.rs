@@ -44,8 +44,7 @@ fn find_reflection_point(map: &[Vec<char>], errors: usize) -> Option<usize> {
         .filter(|(_, it)| count_mismatches(&it[0], &it[1]) <= errors)
         .map(|(idx, _)| idx)
     {
-        let top_slice = map.iter().take(refl_point + 1).collect_vec();
-        let bottom_slice = map.iter().skip(refl_point + 1).collect_vec();
+        let (top_slice, bottom_slice) = map.split_at(refl_point + 1);
 
         let total_num_mismatches = top_slice
             .iter()
