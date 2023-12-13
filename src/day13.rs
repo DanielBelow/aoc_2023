@@ -1,15 +1,11 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use itertools::{iproduct, Itertools};
+use itertools::iproduct;
 
 #[aoc_generator(day13)]
 pub fn generate(inp: &str) -> Vec<Vec<Vec<char>>> {
     inp.split_terminator("\n\n")
-        .map(|it| {
-            it.lines()
-                .map(|line| line.chars().collect_vec())
-                .collect_vec()
-        })
-        .collect_vec()
+        .map(|it| it.lines().map(|line| line.chars().collect()).collect())
+        .collect()
 }
 
 fn transpose(v: &[Vec<char>]) -> Vec<Vec<char>> {
@@ -38,27 +34,25 @@ fn count_mismatches(lhs: &[char], rhs: &[char]) -> usize {
 }
 
 fn find_reflection_point(map: &[Vec<char>], errors: usize) -> Option<usize> {
-    for refl_point in map
-        .windows(2)
+    map.windows(2)
         .enumerate()
         .filter(|(_, it)| count_mismatches(&it[0], &it[1]) <= errors)
-        .map(|(idx, _)| idx)
-    {
-        let (top_slice, bottom_slice) = map.split_at(refl_point + 1);
+        .find_map(|(idx, _)| {
+            let (top_slice, bottom_slice) = map.split_at(idx + 1);
 
-        let total_num_mismatches = top_slice
-            .iter()
-            .rev()
-            .zip(bottom_slice.iter())
-            .map(|(l, r)| count_mismatches(l, r))
-            .sum::<usize>();
+            let total_num_mismatches = top_slice
+                .iter()
+                .rev()
+                .zip(bottom_slice.iter())
+                .map(|(l, r)| count_mismatches(l, r))
+                .sum::<usize>();
 
-        if total_num_mismatches == errors {
-            return Some(refl_point);
-        }
-    }
-
-    None
+            if total_num_mismatches == errors {
+                Some(idx)
+            } else {
+                None
+            }
+        })
 }
 
 fn horizontal_reflections(map: &[Vec<char>], errors: usize) -> Option<usize> {
