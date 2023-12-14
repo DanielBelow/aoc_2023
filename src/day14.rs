@@ -83,39 +83,42 @@ fn simulate_round(inp: &mut Vec<Vec<char>>) {
     tilt_east(inp);
 }
 
+fn run_until_cache_hit(
+    cur_cycle: &mut usize,
+    grid: &mut Vec<Vec<char>>,
+    cache: &mut HashSet<Vec<Vec<char>>>,
+) {
+    while cache.insert(grid.clone()) {
+        simulate_round(grid);
+        *cur_cycle += 1;
+    }
+}
+
 #[aoc(day14, part2)]
 pub fn part2(inp: &[Vec<char>]) -> usize {
     let mut prev_round = inp.to_owned();
 
     let mut cache = HashSet::new();
+    let mut cycle = 0;
 
-    let mut cycle_at = 0;
+    // find the cycle's start idx
+    run_until_cache_hit(&mut cycle, &mut prev_round, &mut cache);
 
-    for idx in 0usize..1_000_000_000 {
+    let cycle_start = cycle - 1;
+
+    // find the length of the cycle
+    cache.clear();
+    run_until_cache_hit(&mut cycle, &mut prev_round, &mut cache);
+
+    let cycle_len = cycle - 1 - cycle_start;
+
+    // run the remaining iterations
+    let remaining = (1_000_000_000 - cycle) % cycle_len;
+    for _ in 0..remaining {
         simulate_round(&mut prev_round);
-
-        if !cache.insert(prev_round.clone()) {
-            if cycle_at == 0 {
-                cycle_at = idx;
-
-                // new start point to find the cycle length
-                cache.clear();
-                cache.insert(prev_round.clone());
-            } else {
-                let cycle_len = idx - cycle_at;
-
-                // leftover iterations
-                let rem = (1_000_000_000 - idx - 1) % cycle_len;
-                for _ in 0..rem {
-                    simulate_round(&mut prev_round);
-                }
-
-                return calculate_load(&prev_round);
-            }
-        }
     }
 
-    unreachable!("No result found for p2")
+    calculate_load(&prev_round)
 }
 
 #[cfg(test)]
