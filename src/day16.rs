@@ -132,8 +132,8 @@ pub fn part1(inp: &[Vec<char>]) -> usize {
 pub fn part2(inp: &[Vec<char>]) -> usize {
     let mut result = 0;
 
-    let width = inp[0].len() as i64;
-    let height = inp.len() as i64;
+    let width = i64::try_from(inp[0].len()).expect("in range");
+    let height = i64::try_from(inp.len()).expect("in range");
 
     // top row
     for x in 0..width {
