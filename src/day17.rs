@@ -2,7 +2,7 @@ use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
 use num::Complex;
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 struct Player {
     direction: Complex<i64>,
     position: Complex<i64>,
@@ -16,6 +16,29 @@ impl Player {
 
     fn turn_right(&mut self) {
         self.direction *= Complex::i();
+    }
+
+    fn move_straight(&self) -> Self {
+        let mut straight = *self;
+        straight.position += straight.direction;
+        straight.straight += 1;
+        straight
+    }
+
+    fn move_left(&self) -> Self {
+        let mut right = *self;
+        right.turn_left();
+        right.position += right.direction;
+        right.straight = 1;
+        right
+    }
+
+    fn move_right(&self) -> Self {
+        let mut right = *self;
+        right.turn_right();
+        right.position += right.direction;
+        right.straight = 1;
+        right
     }
 }
 
@@ -56,10 +79,9 @@ fn valid_positions(succs: &[Player], inp: &[Vec<usize>]) -> Vec<(Player, usize)>
                 && (it.position.im as usize) < height
                 && (it.position.re as usize) < width
         })
-        .cloned()
         .map(|it| {
             let cost = inp[it.position.im as usize][it.position.re as usize];
-            (it, cost)
+            (*it, cost)
         })
         .collect_vec()
 }
@@ -79,25 +101,11 @@ pub fn part1(inp: &[Vec<usize>]) -> usize {
 
             // straight
             if p.straight < 3 {
-                let mut straight = p.clone();
-                straight.position += straight.direction;
-                straight.straight += 1;
-                succs.push(straight);
+                succs.push(p.move_straight());
             }
 
-            // left
-            let mut left = p.clone();
-            left.turn_left();
-            left.position += left.direction;
-            left.straight = 1;
-            succs.push(left);
-
-            // right
-            let mut right = p.clone();
-            right.turn_right();
-            right.position += right.direction;
-            right.straight = 1;
-            succs.push(right);
+            succs.push(p.move_left());
+            succs.push(p.move_right());
 
             valid_positions(&succs, inp)
         },
@@ -117,26 +125,12 @@ pub fn part2(inp: &[Vec<usize>]) -> usize {
 
             // straight
             if p.straight < 10 {
-                let mut straight = p.clone();
-                straight.position += straight.direction;
-                straight.straight += 1;
-                succs.push(straight);
+                succs.push(p.move_straight());
             }
 
             if p.straight >= 4 {
-                // left
-                let mut left = p.clone();
-                left.turn_left();
-                left.position += left.direction;
-                left.straight = 1;
-                succs.push(left);
-
-                // right
-                let mut right = p.clone();
-                right.turn_right();
-                right.position += right.direction;
-                right.straight = 1;
-                succs.push(right);
+                succs.push(p.move_left());
+                succs.push(p.move_right());
             }
 
             valid_positions(&succs, inp)
