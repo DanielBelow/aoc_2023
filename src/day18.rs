@@ -66,11 +66,14 @@ pub fn part1(inp: &[Instruction]) -> usize {
 
     let mut area = 0;
     for i in 0..map.len() {
-        area += (map[i].1 + map[(i + 1) % map.len()].1) * (map[i].0 - map[(i + 1) % map.len()].0);
+        let (y, x) = map[i];
+        let (yn, xn) = map[(i + 1) % map.len()];
+
+        area += (x + xn) * (y - yn);
     }
 
     let perim = map.len();
-    area.unsigned_abs() as usize / 2 + perim / 2 + 1
+    1 + (area.unsigned_abs() as usize + perim) / 2
 }
 
 fn translate(i: &Instruction) -> Instruction {
