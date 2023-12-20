@@ -1,9 +1,12 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
-const LOW: usize = 0;
-const HIGH: usize = 1;
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+pub enum Signal {
+    Low,
+    High,
+}
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum ModuleKind {
@@ -16,7 +19,7 @@ pub enum ModuleKind {
     // Remember all inputs (default low)
     // all high -> low
     // else     -> high
-    Conjunction(HashMap<String, usize>),
+    Conjunction(HashMap<usize, Signal>),
 
     Broadcast,
 }
@@ -39,36 +42,34 @@ fn parse_module(line: &str) -> Module {
         ModuleKind::Broadcast
     };
 
-    let dests = dests.split(", ").map(ToString::to_string).collect_vec();
-
     Module {
         id: module.trim_start_matches(['&', '%']).to_string(),
         kind,
-        dest_mods: dests,
+        dest_mods: dests.split(", ").map(ToString::to_string).collect(),
     }
 }
 
 #[aoc_generator(day20)]
 pub fn generate(inp: &str) -> Vec<Module> {
-    let mut v = inp.lines().map(parse_module).collect_vec();
+    let mut parsed = inp.lines().map(parse_module).collect_vec();
 
-    for idx in 0..v.len() {
-        let all_in = v
+    for idx in 0..parsed.len() {
+        let cur_name = &parsed[idx].id;
+        let all_in = parsed
             .iter()
-            .filter(|it| it.dest_mods.contains(&v[idx].id))
-            .map(|it| &it.id)
-            .cloned()
+            .enumerate()
+            .filter_map(|(index, it)| it.dest_mods.contains(cur_name).then_some(index))
             .collect_vec();
 
-        if let ModuleKind::Conjunction(map) = &mut v[idx].kind {
+        if let ModuleKind::Conjunction(map) = &mut parsed[idx].kind {
             // [...] they initially default to remembering a low pulse for each input
-            for s in all_in {
-                map.insert(s, LOW);
+            for idx in all_in {
+                map.insert(idx, Signal::Low);
             }
         }
     }
 
-    v
+    parsed
 }
 
 #[aoc(day20, part1)]
@@ -79,10 +80,10 @@ pub fn part1(inp: &[Module]) -> usize {
     let mut inp = inp.to_owned();
     let broadcaster = find_module("broadcaster", &inp).expect("start node");
     for _ in 0..1000 {
-        let mut queue = vec![(broadcaster, LOW, None)];
+        let mut queue = VecDeque::from([(broadcaster, Signal::Low, None)]);
         low += 1;
 
-        while let Some((idx, signal, from)) = queue.pop() {
+        while let Some((idx, signal, from)) = queue.pop_front() {
             let (h, l) = handle_signal(&mut inp, &mut queue, idx, signal, from);
             high += h;
             low += l;
@@ -101,23 +102,24 @@ pub fn part2(inp: &[Module]) -> usize {
     // -> check when they emit true (cycling)
     ["jf", "sh", "bh", "mz"]
         .iter()
-        .map(|it| find_cycle_for(it, &mut inp))
+        .filter_map(|it| find_module(it, &inp).map(|idx| find_cycle_for(idx, &mut inp)))
         .product()
 }
 
 fn find_module(id: &str, modules: &[Module]) -> Option<usize> {
-    modules.iter().position(|it| it.id.eq(id))
+    modules.iter().position(|it| it.id == id)
 }
 
-fn find_cycle_for(node: &str, inp: &mut [Module]) -> usize {
-    let mut prev_cycle = 0;
+fn find_cycle_for(node: usize, inp: &mut [Module]) -> usize {
     let broadcaster = find_module("broadcaster", inp).expect("start node");
 
-    for num_presses in 0.. {
-        let mut queue = vec![(broadcaster, LOW, None)];
+    let mut prev_cycle = 0;
 
-        while let Some((idx, signal, from)) = queue.pop() {
-            if signal == HIGH && from == Some(node.to_string()) {
+    for num_presses in 0.. {
+        let mut queue = VecDeque::from([(broadcaster, Signal::Low, None)]);
+
+        while let Some((idx, signal, from)) = queue.pop_front() {
+            if signal == Signal::High && from == Some(node) {
                 if prev_cycle == 0 {
                     prev_cycle = num_presses;
                 } else {
@@ -132,45 +134,47 @@ fn find_cycle_for(node: &str, inp: &mut [Module]) -> usize {
     unreachable!("cycle exists")
 }
 
-fn handle_signal(
-    inp: &mut [Module],
-    queue: &mut Vec<(usize, usize, Option<String>)>,
-    idx: usize,
-    signal: usize,
-    from: Option<String>,
+fn send_pulse(
+    cur: usize,
+    signal: Signal,
+    inp: &[Module],
+    queue: &mut VecDeque<(usize, Signal, Option<usize>)>,
 ) -> (usize, usize) {
-    let send_pulse = |cur: usize,
-                      signal: usize,
-                      inp: &[Module],
-                      queue: &mut Vec<(usize, usize, Option<String>)>|
-     -> (usize, usize) {
-        let high = if signal == HIGH {
-            inp[cur].dest_mods.len()
-        } else {
-            0
-        };
-
-        let low = inp[cur].dest_mods.len() - high;
-
-        for dn in &inp[cur].dest_mods {
-            if let Some(i) = find_module(dn, inp) {
-                queue.insert(0, (i, signal, Some(inp[cur].id.clone())));
-            }
-        }
-
-        (high, low)
+    let dest_mods = &inp[cur].dest_mods;
+    let high = if signal == Signal::High {
+        dest_mods.len()
+    } else {
+        0
     };
 
+    let low = dest_mods.len() - high;
+
+    for dn in dest_mods {
+        if let Some(i) = find_module(dn, inp) {
+            queue.push_back((i, signal, Some(cur)));
+        }
+    }
+
+    (high, low)
+}
+
+fn handle_signal(
+    inp: &mut [Module],
+    queue: &mut VecDeque<(usize, Signal, Option<usize>)>,
+    idx: usize,
+    signal: Signal,
+    from: Option<usize>,
+) -> (usize, usize) {
     match inp[idx].kind {
         ModuleKind::Broadcast => send_pulse(idx, signal, inp, queue),
         ModuleKind::FlipFlop(ref mut state) => {
-            if signal == LOW {
+            if signal == Signal::Low {
                 let to_send = if *state {
                     // If it was on, it turns off and sends a low pulse.
-                    LOW
+                    Signal::Low
                 } else {
                     // If it was off, it turns on and sends a high pulse.
-                    HIGH
+                    Signal::High
                 };
 
                 *state = !*state;
@@ -184,15 +188,13 @@ fn handle_signal(
             // When a pulse is received, the conjunction module first updates its memory for that input.
             // Then, if it remembers high pulses for all inputs, it sends a low pulse;
             // otherwise, it sends a high pulse.
-            assert!(from.is_some());
+            let sender = from.expect("sender exists");
+            map.entry(sender).and_modify(|it| *it = signal);
 
-            map.entry(from.expect("sender exists"))
-                .and_modify(|it| *it = signal);
-
-            let to_send = if map.values().all(|it| *it == HIGH) {
-                LOW
+            let to_send = if map.values().all(|it| *it == Signal::High) {
+                Signal::Low
             } else {
-                HIGH
+                Signal::High
             };
 
             send_pulse(idx, to_send, inp, queue)
