@@ -24,24 +24,17 @@ pub fn generate(inp: &str) -> Vec<Brick> {
         .collect()
 }
 
+#[allow(clippy::suspicious_operation_groupings)]
 fn collides_with_any(cur: usize, next_pos: Brick, bricks: &[Brick]) -> bool {
-    for (idx, b) in bricks.iter().enumerate() {
-        if idx == cur {
-            continue;
-        }
-
-        if next_pos.from.x <= b.to.x
-            && next_pos.to.x >= b.from.x
-            && next_pos.from.y <= b.to.y
-            && next_pos.to.y >= b.from.y
-            && next_pos.from.z <= b.to.z
-            && next_pos.to.z >= b.from.z
-        {
-            return true;
-        }
-    }
-
-    false
+    bricks.iter().enumerate().any(|(idx, it)| {
+        idx != cur
+            && next_pos.from.x <= it.to.x
+            && next_pos.to.x >= it.from.x
+            && next_pos.from.y <= it.to.y
+            && next_pos.to.y >= it.from.y
+            && next_pos.from.z <= it.to.z
+            && next_pos.to.z >= it.from.z
+    })
 }
 
 fn simulate_fall(bricks: &mut Vec<Brick>) -> usize {
@@ -49,15 +42,17 @@ fn simulate_fall(bricks: &mut Vec<Brick>) -> usize {
 
     for i in 0..bricks.len() {
         let cur = bricks[i];
-        if cur.from.z > 1 && cur.to.z > 1 {
-            let mut next_pos = cur;
-            next_pos.from.z -= 1;
-            next_pos.to.z -= 1;
+        if cur.from.z == 1 || cur.to.z == 1 {
+            continue;
+        }
 
-            if !collides_with_any(i, next_pos, bricks) {
-                bricks[i] = next_pos;
-                number_falling += 1;
-            }
+        let mut next_pos = cur;
+        next_pos.from.z -= 1;
+        next_pos.to.z -= 1;
+
+        if !collides_with_any(i, next_pos, bricks) {
+            bricks[i] = next_pos;
+            number_falling += 1;
         }
     }
 
@@ -72,8 +67,7 @@ fn fall_initial(inp: &[Brick]) -> Vec<Brick> {
         .collect_vec();
 
     loop {
-        let fell = simulate_fall(&mut inp);
-        if fell == 0 {
+        if simulate_fall(&mut inp) == 0 {
             break;
         }
     }
