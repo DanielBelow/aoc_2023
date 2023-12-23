@@ -44,9 +44,9 @@ fn dfs(
     }
 
     if is_part_2 {
-        for direction in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-            let ny = (y as isize + direction.0) as usize;
-            let nx = (x as isize + direction.1) as usize;
+        for (dy, dx) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+            let ny = (y as isize + dy) as usize;
+            let nx = (x as isize + dx) as usize;
 
             if ny < grid.len() && nx < grid[ny].len() && grid[ny][nx] != '#' && !visited[ny][nx] {
                 dfs(grid, (ny, nx), end, path, result, visited, is_part_2);
@@ -68,9 +68,9 @@ fn dfs(
             dirs.push((0, 1));
         }
 
-        for direction in dirs {
-            let ny = (y as isize + direction.0) as usize;
-            let nx = (x as isize + direction.1) as usize;
+        for (dy, dx) in dirs {
+            let ny = (y as isize + dy) as usize;
+            let nx = (x as isize + dx) as usize;
 
             if ny < grid.len() && nx < grid[ny].len() && grid[ny][nx] != '#' && !visited[ny][nx] {
                 dfs(grid, (ny, nx), end, path, result, visited, is_part_2);
