@@ -12,6 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Dependencies
+        run: apt-get install z3
       - name: Test
         run: cargo test --release --verbose
       - name: rustfmt
