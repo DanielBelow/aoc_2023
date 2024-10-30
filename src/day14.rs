@@ -7,7 +7,7 @@ pub fn generate(inp: &str) -> Vec<Vec<char>> {
     inp.lines().map(|line| line.chars().collect()).collect_vec()
 }
 
-fn tilt_north(inp: &mut Vec<Vec<char>>) {
+fn tilt_north(inp: &mut [Vec<char>]) {
     for (y, x) in iproduct!(0..inp.len(), 0..inp[0].len()) {
         if inp[y][x] == 'O' {
             let mut top_most = y;
@@ -20,7 +20,7 @@ fn tilt_north(inp: &mut Vec<Vec<char>>) {
     }
 }
 
-fn tilt_west(inp: &mut Vec<Vec<char>>) {
+fn tilt_west(inp: &mut [Vec<char>]) {
     for (y, x) in iproduct!(0..inp.len(), 0..inp[0].len()) {
         if inp[y][x] == 'O' {
             let mut left_most = x;
@@ -33,7 +33,7 @@ fn tilt_west(inp: &mut Vec<Vec<char>>) {
     }
 }
 
-fn tilt_south(inp: &mut Vec<Vec<char>>) {
+fn tilt_south(inp: &mut [Vec<char>]) {
     for (y, x) in iproduct!((0..inp.len()).rev(), 0..inp[0].len()) {
         if inp[y][x] == 'O' {
             let mut south_most = y;
@@ -46,7 +46,7 @@ fn tilt_south(inp: &mut Vec<Vec<char>>) {
     }
 }
 
-fn tilt_east(inp: &mut Vec<Vec<char>>) {
+fn tilt_east(inp: &mut [Vec<char>]) {
     for (y, x) in iproduct!(0..inp.len(), (0..inp[0].len()).rev()) {
         if inp[y][x] == 'O' {
             let mut right_most = x;
@@ -76,7 +76,7 @@ fn calculate_load(inp: &[Vec<char>]) -> usize {
     result
 }
 
-fn simulate_round(inp: &mut Vec<Vec<char>>) {
+fn simulate_round(inp: &mut [Vec<char>]) {
     tilt_north(inp);
     tilt_west(inp);
     tilt_south(inp);
@@ -85,10 +85,10 @@ fn simulate_round(inp: &mut Vec<Vec<char>>) {
 
 fn run_until_cache_hit(
     cur_cycle: &mut usize,
-    grid: &mut Vec<Vec<char>>,
+    grid: &mut [Vec<char>],
     cache: &mut HashSet<Vec<Vec<char>>>,
 ) {
-    while cache.insert(grid.clone()) {
+    while cache.insert(grid.to_vec()) {
         simulate_round(grid);
         *cur_cycle += 1;
     }

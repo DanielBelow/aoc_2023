@@ -25,14 +25,14 @@ fn compare_card_strength(lhs: &str, rhs: &str, joker_is_zero: bool) -> Ordering 
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Hand {
+pub struct GameHand {
     hand: String,
     bid: usize,
     hand_type: u8,
     strongest_possible: Option<String>,
 }
 
-impl Hand {
+impl GameHand {
     fn find_strongest_hand(&self) -> String {
         let freqs = self.hand.chars().counts();
 
@@ -77,12 +77,12 @@ const fn total_winnings(sum: usize, (bid, rank): (usize, usize)) -> usize {
 }
 
 #[aoc_generator(day07)]
-pub fn generate(inp: &str) -> Vec<Hand> {
+pub fn generate(inp: &str) -> Vec<GameHand> {
     inp.lines()
         .map(|it| {
             let (h, b) = it.split_once(' ').expect("input");
             let hand_type = hand_type(h);
-            Hand {
+            GameHand {
                 hand: h.to_string(),
                 bid: b.parse::<usize>().expect("bid"),
                 hand_type,
@@ -93,7 +93,7 @@ pub fn generate(inp: &str) -> Vec<Hand> {
 }
 
 #[aoc(day07, part1)]
-pub fn part1(inp: &[Hand]) -> usize {
+pub fn part1(inp: &[GameHand]) -> usize {
     inp.iter()
         .sorted_by(|lhs, rhs| {
             lhs.hand_type
@@ -106,8 +106,8 @@ pub fn part1(inp: &[Hand]) -> usize {
 }
 
 #[aoc(day07, part2)]
-pub fn part2(inp: &[Hand]) -> usize {
-    let strongest_hand_type = |hand: &Hand| {
+pub fn part2(inp: &[GameHand]) -> usize {
+    let strongest_hand_type = |hand: &GameHand| {
         hand.strongest_possible
             .as_ref()
             .map_or(hand.hand_type, |it| hand_type(it))

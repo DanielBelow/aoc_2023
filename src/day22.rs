@@ -37,7 +37,7 @@ fn collides_with_any(cur: usize, next_pos: Brick, bricks: &[Brick]) -> bool {
     })
 }
 
-fn simulate_fall(bricks: &mut Vec<Brick>) -> usize {
+fn simulate_fall(bricks: &mut [Brick]) -> usize {
     let mut number_falling = 0;
 
     for i in 0..bricks.len() {
